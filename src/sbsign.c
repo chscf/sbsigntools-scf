@@ -77,6 +77,7 @@ static struct option options[] = {
 	{ "help", no_argument, NULL, 'h' },
 	{ "version", no_argument, NULL, 'V' },
 	{ "engine", required_argument, NULL, 'e'},
+	{ "pin", required_argument, NULL, 'p'},
 	{ "addcert", required_argument, NULL, 'a'},
 	{ NULL, 0, NULL, 0 },
 };
@@ -88,6 +89,7 @@ static void usage(void)
 		"Sign an EFI boot image for use with secure boot.\n\n"
 		"Options:\n"
 		"\t--engine <eng>     use the specified engine to load the key\n"
+		"\t--pin <PIN>     use the specified PIN to access the private key\n"
 		"\t--key <keyfile>    signing key (PEM-encoded RSA "
 						"private key)\n"
 		"\t--cert <certfile>  certificate (x509 certificate)\n"
@@ -152,7 +154,7 @@ static int add_intermediate_certs(PKCS7 *p7, const char *filename)
 
 int main(int argc, char **argv)
 {
-	const char *keyfilename, *certfilename, *addcertfilename, *engine;
+	const char *keyfilename, *certfilename, *addcertfilename, *engine, *pin;
 	struct sign_context *ctx;
 	uint8_t *buf, *tmp;
 	int rc, c, sigsize;
@@ -164,10 +166,11 @@ int main(int argc, char **argv)
 	certfilename = NULL;
 	addcertfilename = NULL;
 	engine = NULL;
+	pin = NULL;
 
 	for (;;) {
 		int idx;
-		c = getopt_long(argc, argv, "o:c:k:dvVhe:a:", options, &idx);
+		c = getopt_long(argc, argv, "o:c:k:dvVhe:p:a:", options, &idx);
 		if (c == -1)
 			break;
 
@@ -196,6 +199,9 @@ int main(int argc, char **argv)
 		case 'e':
 			engine = optarg;
 			break;
+		case 'p':
+			pin = optarg;
+			break;
 		case 'a':
 			addcertfilename = optarg;
 			break;
@@ -204,6 +210,7 @@ int main(int argc, char **argv)
 
 	if (argc != optind + 1) {
 		usage();
+		printf("argc=%d, optind=%d\n", argc, optind);
 		return EXIT_FAILURE;
 	}
 
@@ -245,7 +252,7 @@ int main(int argc, char **argv)
 	 * (malloc will cause other failures out lower down */
 	ERR_clear_error();
 	if (engine)
-		pkey = fileio_read_engine_key(engine, keyfilename);
+		pkey = fileio_read_engine_key(engine, pin, keyfilename);
 	else
 		pkey = fileio_read_pkey(keyfilename);
 	if (!pkey)

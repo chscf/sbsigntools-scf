@@ -60,7 +60,7 @@ static int ui_read(UI *ui, UI_STRING *uis)
 	return 1;
 }
 
-EVP_PKEY *fileio_read_engine_key(const char *engine, const char *filename)
+EVP_PKEY *fileio_read_engine_key(const char *engine, const char *pin, const char *filename)
 {
 	UI_METHOD *ui;
 	ENGINE *e;
@@ -87,6 +87,16 @@ EVP_PKEY *fileio_read_engine_key(const char *engine, const char *filename)
 		fprintf(stderr, "Failed to initialize engine %s\n", engine);
 		ERR_print_errors_fp(stderr);
 		goto out_free;
+	}
+
+	if (pin)
+	{
+		if (!ENGINE_ctrl_cmd_string(e, "PIN", pin, 0))
+		{
+			fprintf(stderr, "Failed to PKCS#11 PIN");
+			ERR_print_errors_fp(stderr);
+			goto out_free;
+		}
 	}
 
 	pkey = ENGINE_load_private_key(e, filename, ui, NULL);
